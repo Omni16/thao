@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# getRom — tải 1 hoặc nhiều ROM: ./getRom <link|file> [link|file...]
+# Mỗi input -> downloads/FUJI-DL-*/ (job.json, rom-info.json, getrom.json).
+# Đổi thư mục ra bằng GETROM_OUTDIR (mặc định: downloads).
+set -u
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ $# -gt 0 ] || { echo "usage: ./getRom <link|file> [link|file...]" >&2; exit 1; }
+OUTBASE="${GETROM_OUTDIR:-downloads}"
+mkdir -p "$OUTBASE"
+fail=0
+for input in "$@"; do
+    if DJ="$(bash "$HERE/getrom/getrom.sh" --outdir "$OUTBASE" "$input" 2>"$OUTBASE/last-error.log")"; then
+        printf '%s -> %s/job.json\n' "$input" "$(dirname "$DJ")"
+    else
+        printf 'FAILED %s (see %s/last-error.log)\n' "$input" "$OUTBASE" >&2
+        fail=1
+    fi
+done
+exit "$fail"

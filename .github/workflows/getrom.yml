@@ -1,0 +1,26 @@
+name: getrom
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'ROM link (direct .zip/.tgz, github release, mifirm/xiaomi page...)'
+        required: true
+        type: string
+jobs:
+  get:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./getRom "$ROM_URL"
+        env:
+          ROM_URL: ${{ inputs.url }}
+      - run: cat downloads/FUJI-DL-*/getrom.json downloads/FUJI-DL-*/rom-info.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rom-job
+          retention-days: 5
+          path: |
+            downloads/FUJI-DL-*/getrom.json
+            downloads/FUJI-DL-*/rom-info.json
+            downloads/FUJI-DL-*/job.json
+            downloads/FUJI-DL-*/logs/
