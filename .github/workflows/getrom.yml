@@ -22,7 +22,7 @@ jobs:
         env:
           ROM_URL: ${{ inputs.url }}
       - run: |
-          ls -lh downloads/FUJI-DL-*/*.{zip,tgz,tar.gz} 2>/dev/null
+          ls -lh downloads/FUJI-DL-*/*.{zip,tgz,tar.gz} 2>/dev/null || true
           cat downloads/FUJI-DL-*/getrom.json downloads/FUJI-DL-*/rom-info.json
       - name: split + upload ROM to release
         if: inputs.release_tag != ''
