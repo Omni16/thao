@@ -1,6 +1,6 @@
 # AGENTS.md — thao
 
-Bash pipeline: tải ROM MIUI/HyperOS → nhận diện → unpack. Không phải git repo (push lên GitHub để chạy Actions). Verify duy nhất: `bash test.sh` (43 asserts, không cần root/quyền mạng).
+Bash pipeline: tải ROM MIUI/HyperOS → nhận diện → unpack. Git repo `Omni16/thao` (main); CI chạy `bash test.sh` (43 asserts, không cần root/quyền mạng); workflow `getrom` (dispatch + URL) tải ROM trên runner.
 
 ## Structure
 
