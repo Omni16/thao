@@ -1,0 +1,9 @@
+{
+    "mi_ext": "erofs",
+    "odm": "erofs",
+    "product": "erofs",
+    "system": "erofs",
+    "system_ext": "erofs",
+    "vendor": "erofs",
+    "vendor_dlkm": "erofs"
+}

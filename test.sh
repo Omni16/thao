@@ -8,7 +8,9 @@ ok()   { PASS=$((PASS+1)); printf 'ok   %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf 'FAIL %s\n' "$1"; }
 
 for s in lib/common.sh getrom/resolver.sh getrom/backends.sh getrom/verify.sh \
-          getrom/resolve_rom.sh getrom/getrom.sh detect/detect.sh unpack/unpack.sh fuji getRom test.sh; do
+          getrom/resolve_rom.sh getrom/getrom.sh detect/detect.sh unpack/unpack.sh \
+          port/port.sh port/steps/00-extract.sh port/steps/10-avb.sh port/steps/20-props.sh \
+          port/steps/30-mods.sh port/steps/40-selinux.sh pack/pack.sh fuji getRom test.sh; do
     bash -n "$HERE/$s" && ok "syntax $s" || bad "syntax $s"
 done
 
@@ -97,6 +99,37 @@ if bash "$HERE/unpack/unpack.sh" --type super -d "$T/out2" "$T/fake-super.zip" 2
 else
     grep -q 'shim_lpunpack failed' "$T/err2.log" && ok "unpack super clean shim error" || bad "unpack super error msg"
 fi
+
+# port: fake images dir (vendor fstab + build.prop, system prop, vbmeta magic)
+mkdir -p "$T/img/vendor/etc" "$T/img/system/system"
+printf 'LABEL=x /vendor ext4 ro,barrier=1,avb=vbmeta_system,avb_keys=/avb/q-gsi.avbpubkey 0 0\n' > "$T/img/vendor/etc/fstab.qcom"
+printf 'persist.miui.extm.enable=1\n' > "$T/img/vendor/build.prop"
+printf 'ro.build.version.sdk=35\n' > "$T/img/system/system/build.prop"
+python3 -c "import sys; sys.stdout.buffer.write(b'AVB0' + b'\x00'*123)" > "$T/img/vbmeta.img"
+cat > "$T/preport.json" <<'EOF'
+{
+  "device": {"codename": "marble", "model": "23127PN0CG"},
+  "rom": {"family": "HyperOS", "version": "OS3.0.5.0.VMRCNXM"},
+  "android": {"version": "15", "sdk": "35"},
+  "region": {"code": "CNXM", "name": "China"}
+}
+EOF
+PJ="$(bash "$HERE/port/port.sh" --report "$T/preport.json" --images "$T/img" --out "$T/pout" 2>/dev/null)"
+grep -q '"status": *"completed"' "$PJ" && ok "port completed" || bad "port completed"
+grep -q '10-avb.sh' "$PJ" && ok "port steps logged" || bad "port steps"
+! grep -q 'avb=' "$T/img/vendor/etc/fstab.qcom" && ok "port fstab stripped" || bad "port fstab"
+grep -q 'PlayIntegrityFix' "$T/img/system/system/build.prop" && ok "port spoof props" || bad "port props"
+grep -q 'vendor_file' "$T/img/config/vendor_file_contexts" && ok "port selinux contexts" || bad "port selinux"
+python3 -c "import sys; sys.exit(0 if open('$T/img/vbmeta.img','rb').read()[123:124]==b'\x03' else 1)" 2>/dev/null \
+    && ok "port vbmeta flag" || bad "port vbmeta"
+
+# pack --dry-run reads UR marble layout, no tools needed
+PD="$(bash "$HERE/pack/pack.sh" --parts "$T/img" --device marble --os OS3 --dry-run 2>/dev/null)"
+printf '%s' "$PD" | grep -q 'lpmake' && ok "pack dry-run lpmake" || bad "pack dry-run"
+printf '%s' "$PD" | grep -q -- '--device super:9663676416' && ok "pack marble super size" || bad "pack size"
+printf '%s' "$PD" | grep -q 'vendor_a' && ok "pack VAB slots" || bad "pack slots"
+bash "$HERE/pack/pack.sh" --parts "$T/img" --device nosuchdevice 2>/dev/null \
+    && bad "pack unknown device" || ok "pack rejects unknown device"
 
 # ./getRom wrapper: positional links only, no flags
 GETROM_OUTDIR="$T/g" bash "$HERE/getRom" "$ROM" 2>/dev/null \

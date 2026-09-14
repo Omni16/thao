@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# fuji — dispatcher: getRom | detect | unpack
+# fuji — dispatcher: getRom | detect | unpack | port | pack
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 case "${1:-}" in
     getRom)   shift; exec bash "$HERE/getrom/getrom.sh" "$@" ;;
     detect)   shift; exec bash "$HERE/detect/detect.sh" "$@" ;;
     unpack)   shift; exec bash "$HERE/unpack/unpack.sh" "$@" ;;
-    *) echo "usage: fuji {getRom|detect|unpack} [opts]" >&2; exit 1 ;;
+    port)     shift; exec bash "$HERE/port/port.sh" "$@" ;;
+    pack)     shift; exec bash "$HERE/pack/pack.sh" "$@" ;;
+    *) echo "usage: fuji {getRom|detect|unpack|port|pack} [opts]" >&2; exit 1 ;;
 esac
