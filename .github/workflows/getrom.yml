@@ -6,15 +6,41 @@ on:
         description: 'ROM link (direct .zip/.tgz, github release, mifirm/xiaomi page...)'
         required: true
         type: string
+      release_tag:
+        description: 'Up ROM file lên Release với tag này (vd marble-os3, bỏ trống = không up)'
+        required: false
+        default: ''
+        type: string
 jobs:
   get:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
       - run: ./getRom "$ROM_URL"
         env:
           ROM_URL: ${{ inputs.url }}
-      - run: cat downloads/FUJI-DL-*/getrom.json downloads/FUJI-DL-*/rom-info.json
+      - run: |
+          ls -lh downloads/FUJI-DL-*/*.{zip,tgz,tar.gz} 2>/dev/null
+          cat downloads/FUJI-DL-*/getrom.json downloads/FUJI-DL-*/rom-info.json
+      - name: split + upload ROM to release
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          [[ "$TAG" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "bad tag: $TAG"; exit 1; }
+          f="$(ls downloads/FUJI-DL-*/*.zip downloads/FUJI-DL-*/*.tgz 2>/dev/null | head -n1)"
+          [ -n "$f" ] || { echo "no rom file to upload"; exit 1; }
+          cd "$(dirname "$f")"
+          base="$(basename "$f")"
+          split -b 1900M "$base" "$base.part-"
+          ls -lh "$base".part-*
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "$TAG" \
+                 --notes "Ghép lại: cat $base.part-* > $base (kiểm sha256 trong getrom.json)"
+          gh release upload "$TAG" --clobber "$base".part-*
       - uses: actions/upload-artifact@v7
         with:
           name: rom-job
